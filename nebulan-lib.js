@@ -1,12 +1,5 @@
 (function ($) {
     KWNebulanLibrary = {
-            randomColor: function () {
-                return parseInt(Math.random()*255);
-            },
-            randomColorVector: function () {
-                var self = KWNebulanLibrary;
-                return $V([self.randomColor(), self.randomColor(), self.randomColor()]);
-            },
             calcEasingCurve: function (t) {
                 // Using S-Curve
                 //return 3 * Math.pow(t, 2) - 2 * Math.pow(t, 3);
@@ -35,7 +28,7 @@
             // Shuffle Permutation table
             for (var i = self.permutation.length - 1; i >= 0; i--) {
                 var j = parseInt(Math.random() * i);
-                // swap p[i] and p[j]
+                // Swap p[i] and p[j]
                 var t = self.permutation[i];
                 self.permutation[i] = self.permutation[j];
                 self.permutation[j] = t;
@@ -87,8 +80,6 @@
 
                 return new_color;
             }
-
-
         },
         Frame: function (frame_size) {
             var self = this;
@@ -96,13 +87,13 @@
             self.width = frame_size.elements[0];
             self.height = frame_size.elements[1];
             var i, j;
-            // initial randomization
+            // Initialize frame
             for (i = 0; i < self.width; i++)
             {
                 var column = [];
                 for (j = 0; j < self.height; j++)
                 {
-                    column.push(KWNebulanLibrary.randomColorVector());
+                    column.push($V([0, 0, 0]));
                 }
                 self.frame.push(column);
             }
@@ -161,7 +152,7 @@
                 // Fractional Brownian Motion
                 var self = this;
 
-                var gain = 0.5;
+                var gain = 0.35;
                 var lacunarity = 2.0;
                 var octaves = 16.0;
 

@@ -19,13 +19,13 @@
             self.canvas = document.getElementById("canvas");
             
             var canvas_size = $V([canvas.width, canvas.height]);
-            var noise_frame = new KWNebulanLibrary.Frame(canvas_size);
-            noise_frame.generateNoise();
+            // var noise_frame = new KWNebulanLibrary.Frame(canvas_size);
+            // noise_frame.generateNoise();
 
-            // var fbm_frame = new KWNebulanLibrary.Frame(canvas_size);
-            // fbm_frame.generateFractionalBrownianMotion();
+            var fbm_frame = new KWNebulanLibrary.Frame(canvas_size);
+            fbm_frame.generateFractionalBrownianMotion();
 
-            var output = noise_frame;
+            var output = fbm_frame;
             self.renderFrame(output);
         }
     };
