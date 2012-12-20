@@ -125,8 +125,6 @@
                             max = self.frame[x][y].elements[0];
                     }
                 var range = max - min;
-                console.log(min)
-                console.log(max)
                 for (x = 0; x < self.width; x++)
                     for (y = 0; y < self.height; y++)
                     {
@@ -159,8 +157,8 @@
                         self.frame[i][j].elements[0] = n.noise(i*scale/self.width, j*scale/self.height);
                 self.normalize();
             };
-            self.generateFractualBrownianMotion = function () {
-                // Fractual Brownian Motion
+            self.generateFractionalBrownianMotion = function () {
+                // Fractional Brownian Motion
                 var self = this;
 
                 var gain = 0.5;
