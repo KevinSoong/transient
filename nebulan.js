@@ -1,10 +1,7 @@
 /* Nebulan.js */
 (function($) {
     KWNebulan = {
-        ctx: {},
-        frame: {},
-        width: 0,
-        height: 0,
+        canvas: {},
         randomColor: function () {
             return parseInt(Math.random()*255);
         },
@@ -26,12 +23,80 @@
                 vector = [Math.random(), Math.random()];
             return $V(vector);
         },
-        Frame: function (width, height, sample_size) {
+        NoisePerlin: function (grid_size) {
+            var self = this;
+            self.table_size = 256;
+            self.grid_size = (grid_size == undefined) ? 1: grid_size;
+
+            // Permutation table
+            self.permutation = new Array(self.table_size);
+            for (var i = self.permutation.length - 1; i >= 0; i--) {
+                self.permutation[i] = i;
+            };
+
+            // Shuffle Permutation table
+            for (var i = self.permutation.length - 1; i >= 0; i--) {
+                var j = parseInt(Math.random() * i);
+                // swap p[i] and p[j]
+                var t = self.permutation[i];
+                self.permutation[i] = self.permutation[j];
+                self.permutation[j] = t;
+            };
+
+            // Gradient generation
+            self.gradient = new Array(self.table_size);
+            for (var i = self.gradient.length - 1; i >= 0; i--) {
+                self.gradient[i] = KWNebulan.generateRandomVector();
+            };
+
+            self.noise = function (x, y) {
+                var self = this;
+                // Setup neighbor
+                var i = parseInt(x);
+                var j = parseInt(y);
+                var neighbor = [];
+                neighbor.push($V([i, j]));
+                neighbor.push($V([i+self.grid_size, j]));
+                neighbor.push($V([i+self.grid_size, j+self.grid_size]));
+                neighbor.push($V([i, j+self.grid_size]));
+                
+                var neighbor_tl = neighbor[0];
+                var neighbor_br = neighbor[2];
+
+                // Render point
+                var point = $V([x,y]);
+                var neighbor_dot_color = [];
+                for (var n = 0; n < neighbor.length; n++)
+                {
+                    // Calculation
+                    var nx = neighbor[n].elements[0] % self.table_size;
+                    var ny = neighbor[n].elements[1] % self.table_size;
+                    var gradient_vector = self.gradient[ self.permutation[ ( self.permutation[ nx ] + ny ) % self.table_size ] ];
+                    neighbor_dot_color.push(gradient_vector.dot(point.subtract(neighbor[n])));
+                }
+
+                // Interpolation
+                var tx = (x - neighbor_tl.elements[0]) / self.grid_size;
+                var tx_eased = KWNebulan.calcEasingCurve(tx);
+
+                var top_color = neighbor_dot_color[0] + tx_eased * (neighbor_dot_color[1] - neighbor_dot_color[0]);
+                var bottom_color = neighbor_dot_color[3] + tx_eased * (neighbor_dot_color[2] - neighbor_dot_color[3]);
+
+                var ty = (y - neighbor_tl.elements[1]) / self.grid_size;
+                var ty_eased = KWNebulan.calcEasingCurve(ty);
+
+                var new_color = top_color + ty_eased * (bottom_color - top_color);
+
+                return new_color;
+            }
+
+
+        },
+        Frame: function (frame_size) {
             var self = this;
             self.frame = [];
-            self.width = width;
-            self.height = height;
-            self.sample_size = sample_size;
+            self.width = frame_size.elements[0];
+            self.height = frame_size.elements[1];
             var i, j;
             // initial randomization
             for (i = 0; i < self.width; i++)
@@ -86,89 +151,25 @@
                 }
                 console.log(output);
             },
-            self.generateNoise = function () {
+            self.generateNoise = function (aScale) {
                 var self = this;
-                
-                var table_size = 256;
-
-                // Permutation table
-                var permutation = new Array(table_size);
-                for (var i = permutation.length - 1; i >= 0; i--) {
-                    permutation[i] = i;
-                };
-
-                // Shuffle Permutation table
-                for (var i = permutation.length - 1; i >= 0; i--) {
-                    var j = parseInt(Math.random() * i);
-                    // swap p[i] and p[j]
-                    var t = permutation[i];
-                    permutation[i] = permutation[j];
-                    permutation[j] = t;
-                };
-
-                // Gradient generation
-                var gradient = new Array(table_size);
-                for (var i = gradient.length - 1; i >= 0; i--) {
-                    gradient[i] = KWNebulan.generateRandomVector();
-                };
-
+                var scale = (aScale == undefined)? 1: aScale;
+                var n = new KWNebulan.NoisePerlin();
                 // Noise generation
-                for (i = 0; i < self.width; i+=self.sample_size)
-                    for (j = 0; j < self.height; j+=self.sample_size)
-                    {
-                        // Setup neighbor
-                        var neighbor = [];
-                        neighbor.push($V([i, j]));
-                        neighbor.push($V([i+self.sample_size, j]));
-                        neighbor.push($V([i+self.sample_size, j+self.sample_size]));
-                        neighbor.push($V([i, j+self.sample_size]));
-                        
-                        var neighbor_tl = neighbor[0];
-                        var neighbor_br = neighbor[2];
-
-                        if (neighbor_br.elements[0] > self.width)
-                            neighbor_br.elements[0] = self.width;
-                        if (neighbor_br.elements[1] > self.height)
-                            neighbor_br.elements[1] = self.height;
-
-                        // Render sample tile
-                        var x, y, n;
-                        for (x = neighbor_tl.elements[0]; x < neighbor_br.elements[0]; x++)
-                            for (y = neighbor_tl.elements[1]; y < neighbor_br.elements[1]; y++)
-                            {
-                                var point = $V([x,y]);
-                                var neighbor_dot_color = [];
-                                for (n = 0; n < neighbor.length; n++)
-                                {   
-                                    // Calculation
-                                    var nx = neighbor[n].elements[0] % table_size;
-                                    var ny = neighbor[n].elements[1] % table_size;
-                                    var gradient_vector = gradient[ permutation[ ( permutation[ nx ] + ny ) % table_size ] ];
-                                    neighbor_dot_color.push(gradient_vector.dot(point.subtract(neighbor[n])));
-                                }
-
-                                // Interpolation
-                                var tx = (x - neighbor_tl.elements[0])/(self.sample_size);
-                                var tx_eased = KWNebulan.calcEasingCurve(tx);
-
-                                var top_color = neighbor_dot_color[0] + tx_eased * (neighbor_dot_color[1] - neighbor_dot_color[0]);
-                                var bottom_color = neighbor_dot_color[3] + tx_eased * (neighbor_dot_color[2] - neighbor_dot_color[3]);
-
-                                var ty = (y - neighbor_tl.elements[1])/(self.sample_size);
-                                var ty_eased = KWNebulan.calcEasingCurve(ty);
-
-                                var new_color = top_color + ty_eased * (bottom_color - top_color);
-                                self.frame[x][y].elements[0] = new_color;
-                            }
-                    }
+                for (i = 0; i < self.width; i++)
+                    for (j = 0; j < self.height; j++)
+                        self.frame[i][j].elements[0] = n.noise(i*scale/self.width, j*scale/self.height);
+                self.normalize();
             };
-            this.generateFBM = function ( noise ) {
+            this.generateFBM = function () {
                 // Fractual Brownian Motion
                 var self = this;
 
-                var gain = 0.75;
-                var lacunarity = 1.8715;
+                var gain = 0.5;
+                var lacunarity = 2.0;
                 var octaves = 16.0;
+
+                var n = new KWNebulan.NoisePerlin();
                 var i, j, k;
                 for (i = 0; i < self.width; i++)
                     for (j = 0; j < self.height; j++) {
@@ -178,47 +179,40 @@
 
                         for (k = 0; k < octaves; k++)
                         {
-                            total += noise.getValue(parseInt(i*freq), parseInt(j*freq))/255 * amp;
+                            total += n.noise(i*freq, j*freq) * amp;
                             freq *= lacunarity;
                             amp *= gain;
                         }
-
                         self.frame[i][j].elements[0] = total;
                 }
-                console.log(freq);
-                
+                self.normalize();
             };
         },
-        renderFrame: function ( f ) {
+        renderFrame: function (aFrame) {
             var self = KWNebulan;
-            var x, y;
-            for (x = 0; x < self.width; x++)
-                for (y = 0; y < self.height; y++)
+            var ctx = self.canvas.getContext("2d");
+            for (var x = self.canvas.width - 1; x >= 0 ; x--)
+                for (var y = self.canvas.height - 1; y >= 0 ; y--)
                 {
-                    self.ctx.fillStyle = "rgb("+f.frame[x][y].elements[0]+","
-                                          +f.frame[x][y].elements[0]+","
-                                          +f.frame[x][y].elements[0]+")";
-                    self.ctx.fillRect(x,y,1,1);
+                    ctx.fillStyle = "rgb("+aFrame.frame[x][y].elements[0]+","
+                                          +aFrame.frame[x][y].elements[0]+","
+                                          +aFrame.frame[x][y].elements[0]+")";
+                    ctx.fillRect(x,y,1,1);
                 }
         },
-        setup: function() {
+        setup: function () {
             var self = KWNebulan;
-            var canvas = document.getElementById("canvas");
-            self.ctx = canvas.getContext("2d");
-
-            self.width = canvas.width;
-            self.height = canvas.height;
-            var sample_size = 20;
-            var noise_frame = new self.Frame(self.width*4, self.height*4, sample_size);
+            self.canvas = document.getElementById("canvas");
+            
+            var canvas_size = $V([canvas.width, canvas.height]);
+            var noise_frame = new self.Frame(canvas_size);
             noise_frame.generateNoise();
-            noise_frame.normalize();
-            console.log("test");
-            // var fbm_frame = new self.Frame(self.width, self.height, sample_size);
-            // fbm_frame.generateFBM(noise_frame);
-            // fbm_frame.normalize();
 
-            self.renderFrame(noise_frame);
-            noise_frame.print();
+            var fbm_frame = new self.Frame(canvas_size);
+            fbm_frame.generateFBM();
+
+            var output = noise_frame;
+            self.renderFrame(output);
         }
     };
     $(KWNebulan.setup);
