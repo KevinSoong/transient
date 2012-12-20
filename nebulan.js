@@ -19,7 +19,7 @@
             // Using Monte Carlo method
             // Select vectors with distance less than 1
             var vector = [1, 1];
-            while (vector[0]*vector[0]+vector[1]*vector[0]>=1)
+            while (vector[0] * vector[0] + vector[1] * vector[1] >= 1)
                 vector = [Math.random(), Math.random()];
             return $V(vector);
         },
