@@ -50,8 +50,8 @@
             self.normalize = function () {
                 var self = this;
                 var x, y;
-                var min = 999999999;
-                var max = -999999999;
+                var min = self.frame[0][0].elements[0];
+                var max = self.frame[0][0].elements[0];
                 for (x = 0; x < self.width; x++)
                     for (y = 0; y < self.height; y++)
                     {
@@ -88,17 +88,29 @@
             },
             self.generateNoise = function () {
                 var self = this;
-                var i, j;
+                
+                var table_size = 256;
 
-                 // Gradient generation
-                var random_vector = {};
-                for (i = 0; i <= self.width; i+=self.sample_size)
-                    for (j = 0; j <= self.height; j+=self.sample_size)
-                    {
-                        var position = $V([i, j]);
-                        random_vector[position.elements] = KWNebulan.generateRandomVector();
-                    }
+                // Permutation table
+                var permutation = new Array(table_size);
+                for (var i = permutation.length - 1; i >= 0; i--) {
+                    permutation[i] = i;
+                };
 
+                // Shuffle Permutation table
+                for (var i = permutation.length - 1; i >= 0; i--) {
+                    var j = parseInt(Math.random() * i);
+                    // swap p[i] and p[j]
+                    var t = permutation[i];
+                    permutation[i] = permutation[j];
+                    permutation[j] = t;
+                };
+
+                // Gradient generation
+                var gradient = new Array(table_size);
+                for (var i = gradient.length - 1; i >= 0; i--) {
+                    gradient[i] = KWNebulan.generateRandomVector();
+                };
 
                 // Noise generation
                 for (i = 0; i < self.width; i+=self.sample_size)
@@ -129,7 +141,10 @@
                                 for (n = 0; n < neighbor.length; n++)
                                 {   
                                     // Calculation
-                                    neighbor_dot_color.push(random_vector[neighbor[n].elements].dot(point.subtract(neighbor[n])));
+                                    var nx = neighbor[n].elements[0] % table_size;
+                                    var ny = neighbor[n].elements[1] % table_size;
+                                    var gradient_vector = gradient[ permutation[ ( permutation[ nx ] + ny ) % table_size ] ];
+                                    neighbor_dot_color.push(gradient_vector.dot(point.subtract(neighbor[n])));
                                 }
 
                                 // Interpolation
@@ -193,17 +208,17 @@
 
             self.width = canvas.width;
             self.height = canvas.height;
-            var sample_size = 50;
+            var sample_size = 20;
             var noise_frame = new self.Frame(self.width*4, self.height*4, sample_size);
             noise_frame.generateNoise();
             noise_frame.normalize();
             console.log("test");
-            var fbm_frame = new self.Frame(self.width, self.height, sample_size);
-            fbm_frame.generateFBM(noise_frame);
-            fbm_frame.normalize();
+            // var fbm_frame = new self.Frame(self.width, self.height, sample_size);
+            // fbm_frame.generateFBM(noise_frame);
+            // fbm_frame.normalize();
 
-            self.renderFrame(fbm_frame);
-            fbm_frame.print();
+            self.renderFrame(noise_frame);
+            noise_frame.print();
         }
     };
     $(KWNebulan.setup);
