@@ -4,12 +4,13 @@
         canvas: {},
         animateFrameCounter: 0,
         animateQueue: [],
-        keyFrameInterval: 4000,
+        keyFrameInterval: 2000,
         renderInterval: 120,
         renderLength: this.keyFrameInterval/this.renderInterval,
         renderCounter: 0,
         renderLoop: {},
         diffFrame: {},
+        diffFrameCache: {},
         currentFrame: {},
         currentNomalizedFrame: {},
         renderFrame: function (aFrame) {
@@ -25,18 +26,31 @@
                     ctx.fillRect(x, y, 1, 1);
                 }
         },
+        generateDiffFrameCache: function () {
+            var self = this;
+            for (var i = self.animateQueue.length - 1; i >= 0; i--) {
+                
+                var i_start = i;
+                var i_end = (i_start + 1) % self.animateQueue.length;
+
+                var startFrame = self.animateQueue[i_start];
+                var endFrame = self.animateQueue[i_end];
+                var diffFrame = new KWNebulanLibrary.Frame($V([startFrame.width, startFrame.height]));
+                diffFrame.add(endFrame);
+                diffFrame.subtract(startFrame);
+                diffFrame.multiplyByScalar(self.renderInterval/self.keyFrameInterval);
+                self.diffFrameCache[[i_start, i_end]] = diffFrame;
+            };
+        },
         transitFrame: function (startFrame, endFrame) {
             var self = KWNebulan;
-            var diffFrame = new KWNebulanLibrary.Frame($V([startFrame.width, startFrame.height]));
-            diffFrame.add(endFrame);
-            diffFrame.subtract(startFrame);
-            diffFrame.multiplyByScalar(self.renderInterval/self.keyFrameInterval);
-            self.diffFrame = diffFrame;
+            var i_start = self.animateFrameCounter;
+            var i_end = (i_start + 1) % self.animateQueue.length;
             self.renderLoop = setInterval(function () {
                 var self = KWNebulan;
                 if (self.renderCounter == self.renderLength)
                     clearInterval(self.renderLoop);
-                self.currentFrame.add(self.diffFrame);
+                self.currentFrame.add(self.diffFrameCache[[i_start, i_end]]);
                 self.renderFrame(self.currentFrame);
                 self.renderCounter++;
             }, self.renderInterval);
@@ -59,6 +73,7 @@
         },
         startAnimate: function () {
             var self = KWNebulan;
+            self.generateDiffFrameCache();
             setInterval(self.doAnimateQueue, self.keyFrameInterval);
             console.log(self.animateQueue.length);
         },
