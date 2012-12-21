@@ -6,6 +6,16 @@
                 // 6 * Math.pow(t, 5) - 15 * Math.pow(t, 4) + 10 * Math.pow(t, 3);
                 return t * t * t * (t * (6 * t - 15) + 10);
             },
+            shuffle: function (array) {
+                for (var i = array.length - 1; i >= 0; i--) {
+                    var j = parseInt(Math.random() * i);
+                    // Swap array[i] and array[j]
+                    var t = array[i];
+                    array[i] = array[j];
+                    array[j] = t;
+                };
+                return array;
+            },
             generateRandomVector: function () {
                 // Using Monte Carlo method
                 // Select vectors with distance less than 1
@@ -16,30 +26,38 @@
             },
             NoisePerlin: function (grid_size) {
             var self = this;
-            self.table_size = 256;
+            var permutation_size = 256;
+            var gradient_size = 16;
             self.grid_size = (grid_size == undefined) ? 1: grid_size;
 
             // Permutation table
-            self.permutation = new Array(self.table_size);
+            self.permutation = new Array(permutation_size);
             for (var i = self.permutation.length - 1; i >= 0; i--) {
                 self.permutation[i] = i;
             };
 
             // Shuffle Permutation table
-            for (var i = self.permutation.length - 1; i >= 0; i--) {
-                var j = parseInt(Math.random() * i);
-                // Swap p[i] and p[j]
-                var t = self.permutation[i];
-                self.permutation[i] = self.permutation[j];
-                self.permutation[j] = t;
+            self.permutation = KWNebulanLibrary.shuffle(self.permutation);
+
+            self.generateGradientByAngle = function (size) {
+                var gradient = new Array(size);
+                var angle = 2 * 3.14159 / size;
+                for (var i = gradient.length - 1; i >= 0; i--) {
+                    gradient[i] = $V([Math.cos(i * angle), Math.sin(i * angle)]);
+                };
+                return gradient;
+            };
+            self.generateGradientByRandom = function (size) {
+                var gradient = new Array(size);
+                for (var i = gradient.length - 1; i >= 0; i--) {
+                    gradient[i] = KWNebulanLibrary.generateRandomVector();
+                };
+                return gradient;
             };
 
-            // Gradient generation
-            self.gradient = new Array(self.table_size);
-            for (var i = self.gradient.length - 1; i >= 0; i--) {
-                self.gradient[i] = KWNebulanLibrary.generateRandomVector();
-            };
-
+            // Initialize gradient table
+            self.gradient = self.generateGradientByAngle(gradient_size);
+            
             self.noise = function (x, y) {
                 var self = this;
                 // Setup neighbor
@@ -60,9 +78,9 @@
                 for (var n = 0; n < neighbor.length; n++)
                 {
                     // Calculation
-                    var nx = neighbor[n].elements[0] % self.table_size;
-                    var ny = neighbor[n].elements[1] % self.table_size;
-                    var gradient_vector = self.gradient[ self.permutation[ ( self.permutation[ nx ] + ny ) % self.table_size ] ];
+                    var nx = neighbor[n].elements[0] % self.permutation.length;
+                    var ny = neighbor[n].elements[1] % self.permutation.length;
+                    var gradient_vector = self.gradient[ self.permutation[ ( self.permutation[ nx ] + ny ) % self.permutation.length ] % self.gradient.length ];
                     neighbor_dot_color.push(gradient_vector.dot(point.subtract(neighbor[n])));
                 }
 
@@ -141,7 +159,7 @@
             self.generateNoise = function (aScale) {
                 var self = this;
                 var scale = (aScale == undefined)? 1: aScale;
-                var n = new KWNebulanLibrary.NoisePerlin();
+                var n = new KWNebulanLibrary.NoisePerlin(1);
                 // Noise generation
                 for (i = 0; i < self.width; i++)
                     for (j = 0; j < self.height; j++)
@@ -152,9 +170,9 @@
                 // Fractional Brownian Motion
                 var self = this;
 
-                var gain = 0.35;
+                var gain = 0.5;
                 var lacunarity = 2.0;
-                var octaves = 16.0;
+                var octaves = 8.0;
 
                 var n = new KWNebulanLibrary.NoisePerlin();
                 var i, j, k;
@@ -166,7 +184,7 @@
 
                         for (k = 0; k < octaves; k++)
                         {
-                            total += n.noise(i*freq, j*freq) * amp;
+                            total += n.noise(i * freq, j * freq) * amp;
                             freq *= lacunarity;
                             amp *= gain;
                         }
