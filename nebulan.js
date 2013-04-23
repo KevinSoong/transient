@@ -1,10 +1,14 @@
 /* Nebulan.js */
 (function($) {
     KWNebulan = {
+        // Key frame parameters
+        keyFrameAmount: 3,
+        keyFrameInterval: 2000,
+        // Canvas
         canvas: {},
+        // Animation variables
         animateFrameCounter: 0,
         animateQueue: [],
-        keyFrameInterval: 2000,
         renderInterval: 120,
         renderLength: this.keyFrameInterval/this.renderInterval,
         renderCounter: 0,
@@ -75,26 +79,28 @@
             var self = KWNebulan;
             self.generateDiffFrameCache();
             setInterval(self.doAnimateQueue, self.keyFrameInterval);
-            console.log(self.animateQueue.length);
         },
         setup: function () {
             var self = KWNebulan;
+          
+            // Set up canvas size from DOM
             self.canvas = document.getElementById("canvas");
             var canvas_size = $V([canvas.width, canvas.height]);
-
+          
+            // Import Frame from KWNebulanLibrary
             var Frame = KWNebulanLibrary.Frame;
-            // var noise_frame = new Frame(canvas_size);
-            // noise_frame.generateNoise();
+          
+            // Generate key frames of fractional brownian motion noise
             var output_frames = [];
-            for (var i = 3; i >= 0; i--) {
+            for (var i = self.keyFrameAmount; i >= 0; i--) {
                 var fbm_frame = new Frame(canvas_size);
                 fbm_frame.generateFractionalBrownianMotion();
                 output_frames.push(fbm_frame);
             }
+            
+            // Start animating frames
             self.pushAnimateFrame(output_frames);
             self.startAnimate();
-            //var output = output_frames[0];
-            //self.renderFrame(output);
         }
     };
     $(KWNebulan.setup);
