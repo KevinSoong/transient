@@ -1,24 +1,27 @@
-/* Nebulan.js */
+/* transient.js */
 (function($) {
-    KWNebulan = {
-        // Key frame parameters
+    KWTransient = {
+        /* Parameters */
         keyFrameAmount: 3,
         keyFrameInterval: 2000,
+
+        /* Internal variables */
         // Canvas
         canvas: {},
         // Animation variables
-        animateFrameCounter: 0,
-        animateQueue: [],
-        renderInterval: 120,
-        renderLength: this.keyFrameInterval/this.renderInterval,
-        renderCounter: 0,
-        renderLoop: {},
+        animationFrameCounter: 0,
+        animationQueue: [],
+        renderingInterval: 120,
+        renderingLength: this.keyFrameInterval/this.renderingInterval,
+        renderingCounter: 0,
+        renderCrossfade: {},
         diffFrame: {},
         diffFrameCache: {},
         currentFrame: {},
         currentNomalizedFrame: {},
+        // Animation methods
         renderFrame: function (aFrame) {
-            var self = KWNebulan;
+            var self = KWTransient;
             var ctx = self.canvas.getContext("2d");
             for (var x = self.canvas.width - 1; x >= 0 ; x--)
                 for (var y = self.canvas.height - 1; y >= 0 ; y--)
@@ -32,56 +35,57 @@
         },
         generateDiffFrameCache: function () {
             var self = this;
-            for (var i = self.animateQueue.length - 1; i >= 0; i--) {
+            for (var i = self.animationQueue.length - 1; i >= 0; i--) {
                 
                 var i_start = i;
-                var i_end = (i_start + 1) % self.animateQueue.length;
+                var i_end = (i_start + 1) % self.animationQueue.length;
 
-                var startFrame = self.animateQueue[i_start];
-                var endFrame = self.animateQueue[i_end];
+                var startFrame = self.animationQueue[i_start];
+                var endFrame = self.animationQueue[i_end];
                 var diffFrame = new KWNebulanLibrary.Frame($V([startFrame.width, startFrame.height]));
                 diffFrame.add(endFrame);
                 diffFrame.subtract(startFrame);
-                diffFrame.multiplyByScalar(self.renderInterval/self.keyFrameInterval);
+                diffFrame.multiplyByScalar(self.renderingInterval/self.keyFrameInterval);
                 self.diffFrameCache[[i_start, i_end]] = diffFrame;
             };
         },
-        transitFrame: function (startFrame, endFrame) {
-            var self = KWNebulan;
-            var i_start = self.animateFrameCounter;
-            var i_end = (i_start + 1) % self.animateQueue.length;
-            self.renderLoop = setInterval(function () {
-                var self = KWNebulan;
-                if (self.renderCounter == self.renderLength)
-                    clearInterval(self.renderLoop);
+        crossfadeFrame: function (startFrame, endFrame) {
+            var self = KWTransient;
+            var i_start = self.animationFrameCounter;
+            var i_end = (i_start + 1) % self.animationQueue.length;
+            self.renderCrossfade = setInterval(function () {
+                var self = KWTransient;
+                if (self.renderingCounter == self.renderingLength)
+                    clearInterval(self.renderCrossfade);
                 self.currentFrame.add(self.diffFrameCache[[i_start, i_end]]);
                 self.renderFrame(self.currentFrame);
-                self.renderCounter++;
-            }, self.renderInterval);
+                self.renderingCounter++;
+            }, self.renderingInterval);
         },
-        pushAnimateFrame: function (frameArray) {
-            var self = KWNebulan;
+        pushAnimationFrame: function (frameArray) {
+            var self = KWTransient;
             for (var i = 0; i < frameArray.length; i++) {
-                self.animateQueue.push(frameArray[i]);
+                self.animationQueue.push(frameArray[i]);
             };
         },
-        doAnimateQueue: function () {
-            var self = KWNebulan;
-            if (self.renderLoop)
-                clearInterval(self.renderLoop);
-            var referenceFrame = self.animateQueue[self.animateFrameCounter];
+        animateQueue: function () {
+            var self = KWTransient;
+            if (self.renderCrossfade)
+                clearInterval(self.renderCrossfade);
+            var referenceFrame = self.animationQueue[self.animationFrameCounter];
             self.currentFrame = new KWNebulanLibrary.Frame($V([referenceFrame.width, referenceFrame.height]));
             self.currentFrame.add(referenceFrame);
-            self.transitFrame(self.animateQueue[self.animateFrameCounter], self.animateQueue[(self.animateFrameCounter + 1) % self.animateQueue.length]);
-            self.animateFrameCounter = (++self.animateFrameCounter) % self.animateQueue.length;
+            self.crossfadeFrame(self.animationQueue[self.animationFrameCounter], self.animationQueue[(self.animationFrameCounter + 1) % self.animationQueue.length]);
+            self.animationFrameCounter = (++self.animationFrameCounter) % self.animationQueue.length;
         },
         startAnimate: function () {
-            var self = KWNebulan;
+            var self = KWTransient;
             self.generateDiffFrameCache();
-            setInterval(self.doAnimateQueue, self.keyFrameInterval);
+            setInterval(self.animateQueue, self.keyFrameInterval);
         },
+        // Page initialization
         setup: function () {
-            var self = KWNebulan;
+            var self = KWTransient;
           
             // Set up canvas size from DOM
             self.canvas = document.getElementById("canvas");
@@ -99,9 +103,9 @@
             }
             
             // Start animating frames
-            self.pushAnimateFrame(output_frames);
+            self.pushAnimationFrame(output_frames);
             self.startAnimate();
         }
     };
-    $(KWNebulan.setup);
+    $(KWTransient.setup);
 })(jQuery);
